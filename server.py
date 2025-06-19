@@ -1,16 +1,32 @@
-import socket
+import socket, cv2, pickle, struct
 
-HOST = '0.0.0.0' # Accept connections on all interfaces
-PORT = 443       # Use port 443 (firewall-friendly)
+# Socket Create
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+host_name = socket.gethostname()
+host_ip = socket.gethostbyname(host_name)
+port = 9999
+print(f'HOST IP: {host_ip}:{port}')
+socket_address = (host_ip, port)
 
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
-    server_socket.bind((HOST, PORT))
-    server_socket.listen(1)
-    print(f"[SERVER] Listening on port {PORT}...")
+#Socket Bind
+server_socket.bind(socket_address)
 
-    conn, addr = server_socket.accept()
-    with conn:
-        print(f"[SERVER] Connnected by {addr}")
-        while True:
-            message = input("Enter message to send: ")
-            conn.sendall(message.encode('utf-8'))
+# Socket Listen
+server_socket.listen(5)
+print("LISTENING AT:", socket_address)
+
+# Socket Accept
+while True:
+    client_socket, addr = server_socket.accept()
+    print('GOT CONNECTION FROM:', addr)
+    if client_socket:
+        vid = cv2.VideoCapture(0)
+        while(vid.isOpened()):
+            img,frame = vid.read()
+            a = pickle.dumps(frame)
+            message = struct.pack("Q", len(a)) + a
+            client_socket.sendall(message)
+            cv2.imshow('TRANSMITTING VIDEO', frame)
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('q'):
+                client_socket.close()
